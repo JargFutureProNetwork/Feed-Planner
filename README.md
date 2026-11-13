@@ -217,4 +217,5 @@ Open http://localhost:3000.
 | `supabase/cron.sql` | The every-minute publishing job |
 #   F e e d - P l a n n e r  
  #   F e e d - P l a n n e r  
+ #   F e e d - P l a n n e r  
  
