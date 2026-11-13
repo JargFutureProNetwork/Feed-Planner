@@ -36,6 +36,10 @@ export interface PostRow {
   caption: string;
   scheduled_at: string;
   status: PostStatus;
+  post_type?: "image" | "carousel" | "reel" | null;
+  media?: { kind: "image" | "video"; url: string }[] | null;
+  cover_url?: string | null;
+  container_id?: string | null;
 }
 
 /** The only post columns that are ever sent to a browser. error_message is not among them. */

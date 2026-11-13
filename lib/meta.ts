@@ -67,30 +67,74 @@ export async function graph<T>(path: string, options: { method?: "GET" | "POST";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * The official two-step publishing flow for one image:
- *   1. POST /{ig-user-id}/media            -> container id
- *   2. wait until the container is FINISHED
- *   3. POST /{ig-user-id}/media_publish    -> published media id
- */
-export async function publishImage(igUserId: string, token: string, imageUrl: string, caption: string, host: string = FACEBOOK_GRAPH): Promise<string> {
-  const container = await graph<{ id: string }>(`/${igUserId}/media`, {
-    method: "POST", token, host, params: { image_url: imageUrl, caption },
-  });
+export interface MediaItem { kind: "image" | "video"; url: string }
+export interface PublishJob {
+  post_type: "image" | "carousel" | "reel";
+  media: MediaItem[];
+  caption: string;
+  cover_url?: string | null;
+  /** Where a previous attempt got to: "k:id,id" = carousel slides created, "c:id" = final container created. */
+  state?: string | null;
+}
+export type StepResult = { done: true; mediaId: string } | { done: false; state: string };
 
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const state = await graph<{ status_code?: string; status?: string }>(`/${container.id}`, {
-      token, host, params: { fields: "status_code,status" },
-    });
-    if (state.status_code === "FINISHED" || state.status_code === "PUBLISHED") break;
-    if (state.status_code === "ERROR" || state.status_code === "EXPIRED") {
-      throw new MetaError(`Media container ${state.status_code}: ${state.status || "no detail"}`, { code: 9004 });
+async function containerReady(id: string, token: string, host: string): Promise<boolean> {
+  const s = await graph<{ status_code?: string; status?: string }>(`/${id}`, { token, host, params: { fields: "status_code,status" } });
+  if (s.status_code === "ERROR" || s.status_code === "EXPIRED") {
+    throw new MetaError(`Media container ${s.status_code}: ${s.status || "no detail"}`, { code: 9004 });
+  }
+  return s.status_code === "FINISHED" || s.status_code === "PUBLISHED";
+}
+
+/**
+ * Publishes an image, a carousel or a reel with the official container flow:
+ *   create container(s) -> wait until Instagram has processed them -> media_publish.
+ * Videos can take minutes to process, longer than one server request may run. So this works in steps:
+ * it stops at `deadline`, hands back where it got to, and is called again later with that state.
+ * `save` is called whenever a container has been created, so nothing is ever created twice.
+ */
+export async function publishStep(
+  igUserId: string, token: string, host: string, job: PublishJob, deadline: number, save: (state: string) => Promise<void>,
+): Promise<StepResult> {
+  const create = async (params: Params) => (await graph<{ id: string }>(`/${igUserId}/media`, { method: "POST", token, host, params })).id;
+  let kids: string[] = [], container = "";
+  if (job.state?.startsWith("c:")) container = job.state.slice(2);
+  else if (job.state?.startsWith("k:")) kids = job.state.slice(2).split(",").filter(Boolean);
+
+  if (!container && !kids.length) {
+    if (job.post_type === "carousel") {
+      for (const m of job.media) {
+        kids.push(await create(m.kind === "video"
+          ? { media_type: "VIDEO", video_url: m.url, is_carousel_item: "true" }
+          : { image_url: m.url, is_carousel_item: "true" }));
+      }
+      await save(`k:${kids.join(",")}`);
+    } else {
+      const m = job.media[0];
+      container = await create(job.post_type === "reel"
+        ? { media_type: "REELS", video_url: m.url, caption: job.caption, cover_url: job.cover_url || undefined }
+        : { image_url: m.url, caption: job.caption });
+      await save(`c:${container}`);
     }
-    await sleep(2500);
   }
 
-  const published = await graph<{ id: string }>(`/${igUserId}/media_publish`, {
-    method: "POST", token, host, params: { creation_id: container.id },
-  });
-  return published.id;
+  if (!container) {
+    for (;;) {
+      let ready = true;
+      for (const id of kids) if (!(await containerReady(id, token, host))) { ready = false; break; }
+      if (ready) break;
+      if (Date.now() + 3000 > deadline) return { done: false, state: `k:${kids.join(",")}` };
+      await sleep(3000);
+    }
+    container = await create({ media_type: "CAROUSEL", children: kids.join(","), caption: job.caption });
+    await save(`c:${container}`);
+  }
+
+  for (;;) {
+    if (await containerReady(container, token, host)) break;
+    if (Date.now() + 3000 > deadline) return { done: false, state: `c:${container}` };
+    await sleep(3000);
+  }
+  const published = await graph<{ id: string }>(`/${igUserId}/media_publish`, { method: "POST", token, host, params: { creation_id: container } });
+  return { done: true, mediaId: published.id };
 }

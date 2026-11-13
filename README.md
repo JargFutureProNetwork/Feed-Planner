@@ -13,6 +13,41 @@ your screen, look for the closest match.
 
 ---
 
+## Update 2: brand projects, bulk upload, carousels and reels
+
+If your app was already live before this update, do this once, **in this order**:
+
+1. In Supabase open **SQL Editor > New query**, paste the whole of
+   [`supabase/migration-002.sql`](supabase/migration-002.sql) and click **Run**. It only adds
+   things (a `projects` table, a few columns, and permission for videos in the storage bucket).
+2. Then deploy the new code (push to GitHub; Vercel redeploys).
+3. Open the checkup page (`/api/admin/check?key=YOUR_CRON_SECRET`). The three lines marked
+   "(update 2)" should say OK.
+
+New projects only need `supabase/schema.sql`, which now includes all of this.
+
+What students get: a project per brand and month (colours, logo, voice, pillars, posting days),
+bulk upload of photos and videos, single posts, carousels and reels, the Format / Pillar / Week
+list on the left, **Plan with Gemini** to write the copy and arrange the month, and **Schedule
+post** / **Publish now** on every post.
+
+Limits worth knowing:
+
+- **Videos**: MP4 or MOV, up to 50 MB each (the free Supabase limit per file). Instagram takes a
+  few minutes to process a video, so a reel appears a little after its scheduled minute. This relies
+  on the every-minute job from Part 6.
+- **Carousels**: 2 to 20 slides. Instagram shows every slide in the shape of the first one.
+- **Free Supabase storage is 1 GB in total.** Videos fill it fastest; delete old projects when a
+  month is finished.
+- **A scheduled post is a snapshot.** It goes out as it was when "Schedule post" was clicked. After
+  editing it, cancel and schedule again.
+
+To look at the planner on your own computer without logging in or touching the live data:
+`FPS_PREVIEW=1 npm run dev` (PowerShell: `$env:FPS_PREVIEW=1; npm run dev`). Preview mode can
+never switch on in the deployed app.
+
+---
+
 ## Part 1: Supabase (database and photo storage)
 
 1. Go to supabase.com, sign in, and click **New project**. Pick any name and region, set a database
@@ -233,7 +268,6 @@ Good to know:
 - **Connections last about 60 days.** The app shows a Reconnect notice in the final week.
 - **Free Supabase projects pause after a week with no activity.** The every-minute job from Part 6
   normally keeps yours awake; if it ever pauses, open the Supabase dashboard and click Restore.
-- **This version posts single photos.** Reels and carousels use a different Meta flow and aren't included.
 - **Deleting a post here never deletes it from Instagram.**
 - **If you rotate `META_APP_SECRET`**, everyone is signed out and simply signs in again.
 
@@ -257,14 +291,16 @@ Open http://localhost:3000.
 | Path | What it does |
 | --- | --- |
 | `app/page.tsx` | Shows the sign-in screen or the planner |
-| `components/` | The planner UI (feed, calendar, post editor) |
+| `public/studio.js` | The planner itself (brand, feed, calendar, post editor, AI planning) |
+| `components/Login.tsx` | The sign-in screen |
 | `app/api/auth/meta/login` | Sends the student to Meta's login |
 | `app/api/auth/meta/callback` | Code → 60-day token → finds their Instagram → saves it |
-| `app/api/posts` | List, schedule, edit and delete posts |
+| `app/api/posts` | List, schedule and cancel posts |
+| `app/api/projects` | Saves each student's projects |
 | `app/api/posts/publish-now` | Publishes immediately |
 | `app/api/cron/publish` | Publishes every post that is due (needs `CRON_SECRET`) |
-| `app/api/upload` | Stores the prepared JPEG in Supabase Storage |
-| `app/api/ai/caption` | Caption helper (Gemini), key stays on the server |
+| `app/api/upload` | Stores photos and videos in Supabase Storage |
+| `app/api/ai/plan` | Plan / Write with Gemini; the key stays on the server |
 | `lib/` | Meta API calls, friendly error messages, sessions, database client |
 | `supabase/schema.sql` | Tables, Row Level Security, storage bucket |
 | `supabase/cron.sql` | The every-minute publishing job |

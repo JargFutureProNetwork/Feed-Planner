@@ -77,10 +77,19 @@ export async function GET(request: NextRequest) {
       }
       const { error: colError } = await sb.from("instagram_accounts").select("user_id,fb_user_id,ig_user_id,ig_username,ig_profile_picture_url,access_token,token_expires_at").limit(1);
       add(!colError, "Table instagram_accounts has every column the app needs", colError ? `${colError.message}. Run the full supabase/schema.sql again.` : "");
+      const { error: projError } = await sb.from("projects").select("id", { count: "exact", head: true });
+      add(!projError, "Table projects exists (update 2)", projError ? `${projError.message || "Could not reach the table"}. Run supabase/migration-002.sql in the Supabase SQL Editor.` : "");
+      const { error: newColError } = await sb.from("scheduled_posts").select("post_type,media,cover_url,container_id,publish_started_at,lease_until").limit(1);
+      add(!newColError, "Table scheduled_posts has the carousel and reel columns (update 2)", newColError ? `${newColError.message}. Run supabase/migration-002.sql in the Supabase SQL Editor.` : "");
       const { data: bucket, error: bucketError } = await sb.storage.getBucket(STORAGE_BUCKET);
       add(!bucketError && !!bucket?.public, `Storage bucket "${STORAGE_BUCKET}" exists and is public`,
         bucketError ? `${bucketError.message}. Create a bucket named exactly ${STORAGE_BUCKET} and make it public (or run schema.sql again). This error also appears when the key is not the service_role key.`
           : bucket?.public ? "" : "The bucket exists but is private. Edit it in Supabase > Storage and switch 'Public bucket' on.");
+      if (bucket) {
+        const types = bucket.allowed_mime_types || [];
+        const videoOk = !types.length || types.includes("video/mp4");
+        add(videoOk && (!bucket.file_size_limit || bucket.file_size_limit >= 50 * 1024 * 1024), "Storage bucket accepts videos up to 50 MB (update 2)", videoOk ? (bucket.file_size_limit && bucket.file_size_limit < 50 * 1024 * 1024 ? "The size limit is below 50 MB. Run supabase/migration-002.sql." : "") : "Videos are not allowed yet. Run supabase/migration-002.sql in the Supabase SQL Editor.");
+      }
     } catch (e) {
       add(false, "Supabase can be reached", technicalError(e));
     }
