@@ -21,7 +21,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   }
 
   const step = typeof params.step === "string" && /^[a-z]{1,12}$/.test(params.step) ? params.step : undefined;
-  if (!account) return <Login error={error} step={step} />;
+  const viaInstagram = !!(process.env.INSTAGRAM_APP_ID || "").trim();
+  const loginUrl = viaInstagram ? "/api/auth/instagram/login" : "/api/auth/meta/login";
+  if (!account) return <Login error={error} step={step} loginUrl={loginUrl} viaInstagram={viaInstagram} />;
 
   const expires = account.token_expires_at ? new Date(account.token_expires_at).getTime() : null;
   return (
@@ -32,6 +34,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
         needsReconnect: expires != null && expires <= Date.now(),
         expiresSoon: expires != null && expires > Date.now() && expires - Date.now() < WEEK,
       }}
+      loginUrl={loginUrl}
       aiEnabled={!!(process.env.GEMINI_API_KEY || "").trim()}
     />
   );

@@ -20,6 +20,8 @@ export type PostStatus = "pending" | "publishing" | "published" | "failed";
 
 export interface AccountRow {
   user_id: string;
+  /** Login identity. Starts with "ig:" when the account was connected with Instagram Login. */
+  fb_user_id: string;
   ig_user_id: string;
   ig_username: string;
   ig_profile_picture_url: string | null;

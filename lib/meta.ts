@@ -1,7 +1,10 @@
 /** Thin wrapper around the official Meta Graph API. Server only. */
 
 export const GRAPH_VERSION = (process.env.META_GRAPH_VERSION || "v21.0").trim();
-const GRAPH = `https://graph.facebook.com/${GRAPH_VERSION}`;
+export const FACEBOOK_GRAPH = "graph.facebook.com";
+/** Accounts connected with "Instagram Login" (no Facebook Page) are served by this host instead. */
+export const INSTAGRAM_GRAPH = "graph.instagram.com";
+export const INSTAGRAM_SCOPES = ["instagram_business_basic", "instagram_business_content_publish"];
 
 export const META_SCOPES = ["instagram_basic", "instagram_content_publish", "pages_show_list", "pages_read_engagement"];
 
@@ -32,8 +35,9 @@ export class MetaError extends Error {
 
 type Params = Record<string, string | undefined>;
 
-export async function graph<T>(path: string, options: { method?: "GET" | "POST"; params?: Params; token?: string } = {}): Promise<T> {
-  const { method = "GET", params = {}, token } = options;
+export async function graph<T>(path: string, options: { method?: "GET" | "POST"; params?: Params; token?: string; host?: string; unversioned?: boolean } = {}): Promise<T> {
+  const { method = "GET", params = {}, token, host = FACEBOOK_GRAPH, unversioned = false } = options;
+  const GRAPH = `https://${host}${unversioned ? "" : `/${GRAPH_VERSION}`}`;
   const query = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v != null) query.set(k, v);
   if (token) query.set("access_token", token);
@@ -49,7 +53,10 @@ export async function graph<T>(path: string, options: { method?: "GET" | "POST";
 
   let data: unknown = null;
   try { data = await res.json(); } catch { /* not JSON */ }
-  const err = (data as { error?: { message?: string; type?: string; code?: number; error_subcode?: number; fbtrace_id?: string } } | null)?.error;
+  let err = (data as { error?: { message?: string; type?: string; code?: number; error_subcode?: number; fbtrace_id?: string } } | null)?.error;
+  // api.instagram.com reports errors in its own flat shape.
+  const flat = data as { error_type?: string; error_message?: string; code?: number } | null;
+  if (!err && flat?.error_message) err = { message: flat.error_message, type: flat.error_type, code: flat.code };
   if (!res.ok || !data || err) {
     throw new MetaError(err?.message || `Meta answered HTTP ${res.status}`, {
       code: err?.code, subcode: err?.error_subcode, type: err?.type, traceId: err?.fbtrace_id,
@@ -66,14 +73,14 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *   2. wait until the container is FINISHED
  *   3. POST /{ig-user-id}/media_publish    -> published media id
  */
-export async function publishImage(igUserId: string, token: string, imageUrl: string, caption: string): Promise<string> {
+export async function publishImage(igUserId: string, token: string, imageUrl: string, caption: string, host: string = FACEBOOK_GRAPH): Promise<string> {
   const container = await graph<{ id: string }>(`/${igUserId}/media`, {
-    method: "POST", token, params: { image_url: imageUrl, caption },
+    method: "POST", token, host, params: { image_url: imageUrl, caption },
   });
 
   for (let attempt = 0; attempt < 10; attempt++) {
     const state = await graph<{ status_code?: string; status?: string }>(`/${container.id}`, {
-      token, params: { fields: "status_code,status" },
+      token, host, params: { fields: "status_code,status" },
     });
     if (state.status_code === "FINISHED" || state.status_code === "PUBLISHED") break;
     if (state.status_code === "ERROR" || state.status_code === "EXPIRED") {
@@ -83,7 +90,7 @@ export async function publishImage(igUserId: string, token: string, imageUrl: st
   }
 
   const published = await graph<{ id: string }>(`/${igUserId}/media_publish`, {
-    method: "POST", token, params: { creation_id: container.id },
+    method: "POST", token, host, params: { creation_id: container.id },
   });
   return published.id;
 }

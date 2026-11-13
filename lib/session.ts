@@ -8,7 +8,8 @@ const THIRTY_DAYS = 60 * 60 * 24 * 30;
 
 // The signing key is derived from the Meta app secret, so there is no extra variable to set up.
 function key(): Buffer {
-  return createHmac("sha256", env("META_APP_SECRET")).update("feed-preview-session-v1").digest();
+  const secret = (process.env.META_APP_SECRET || process.env.INSTAGRAM_APP_SECRET || "").trim() || env("META_APP_SECRET");
+  return createHmac("sha256", secret).update("feed-preview-session-v1").digest();
 }
 
 export function signToken(data: Record<string, unknown>, maxAgeSeconds = THIRTY_DAYS): string {

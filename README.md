@@ -112,6 +112,55 @@ git push -u origin main
 5. When Meta's sign-in asks which Pages and Instagram accounts to share, the student should tick
    their Page **and** their Instagram account, and leave every permission switched on.
 
+## Part 4B: Direct Instagram sign-in (recommended)
+
+With this switched on, students see **Continue with Instagram** and sign in with their Instagram
+login only. They need **no Facebook account, no Facebook Page and no developer registration**.
+Their Instagram must still be a **professional** account (Business or Creator): Meta does not allow
+any app to publish to personal accounts. Switching is free and takes a minute in the Instagram app
+(Settings > Account type and tools > Switch to professional account).
+
+### Set it up in Meta
+
+1. In your Meta app, open the **Instagram** product and choose **API setup with Instagram login**
+   (also called "Instagram API with Instagram Login"). If the Instagram product isn't there, add it
+   under **Add product** / **Use cases**.
+2. On that screen copy two values. They are different from the App ID and secret in Part 4:
+   - **Instagram app ID** → `INSTAGRAM_APP_ID`
+   - **Instagram app secret** (click Show) → `INSTAGRAM_APP_SECRET`
+3. Still on that screen, find **Set up Instagram business login** and open its **Business login
+   settings**. Under **OAuth redirect URIs** add exactly (with your own app address):
+   - `https://feed-preview-app.vercel.app/api/auth/instagram/callback`
+   - Save. `https`, no slash at the end.
+4. Make sure the permissions `instagram_business_basic` and `instagram_business_content_publish`
+   are added for the app (same screen, or **Use cases > Customize > Permissions**).
+5. In Vercel add `INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` (Part 5), then **Redeploy**.
+   The button on the sign-in screen changes to "Continue with Instagram" by itself.
+6. Open the checkup page (`/api/admin/check?key=YOUR_CRON_SECRET`) to confirm the values are read.
+
+Keep `META_APP_ID` and `META_APP_SECRET` in Vercel as they are. Removing `META_APP_SECRET` would
+sign everybody out.
+
+### Add each student as an Instagram Tester
+
+While the app is in Development mode, only Instagram accounts with a role can sign in.
+
+1. **You invite them.** Meta app > **App roles > Roles** > **Add People** > choose
+   **Instagram Tester** > type the student's **Instagram username** > Add. They show as *Pending*.
+2. **The student accepts**, logged in to that Instagram account:
+   - On a computer: [instagram.com/accounts/manage_access](https://www.instagram.com/accounts/manage_access/)
+     > **Tester invites** tab > **Accept**.
+   - In the Instagram app: **Settings and activity > Website permissions > Apps and websites >
+     Tester invites > Accept**. (Meta moves this menu occasionally; searching Settings for
+     "Apps and websites" finds it.)
+3. In **App roles > Roles** the student no longer shows as Pending. Now send them the app link.
+
+Your own Instagram account needs this too: add yourself as an Instagram Tester and accept, even
+though you are the app's admin.
+
+Already connected through Facebook? Just sign in again with Instagram. The planner and its posts
+stay with the same Instagram username.
+
 ## Part 5: Environment variables in Vercel
 
 In Vercel open your project > **Settings > Environment Variables** and add these (for Production):
@@ -122,6 +171,8 @@ In Vercel open your project > **Settings > Environment Variables** and add these
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key from Part 1 |
 | `META_APP_ID` | App ID from Part 4 |
 | `META_APP_SECRET` | App secret from Part 4 |
+| `INSTAGRAM_APP_ID` | Instagram app ID from Part 4B (switches on "Continue with Instagram") |
+| `INSTAGRAM_APP_SECRET` | Instagram app secret from Part 4B |
 | `NEXT_PUBLIC_APP_URL` | Your app address, e.g. `https://feed-preview-app.vercel.app` (no slash at the end) |
 | `CRON_SECRET` | Any long random text. Make one up, 30+ characters, letters and numbers only |
 | `GEMINI_API_KEY` | Optional. Your Google Gemini key, for the "Write with AI" button |

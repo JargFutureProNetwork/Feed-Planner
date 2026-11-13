@@ -2,6 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { db, type AccountRow } from "@/lib/supabase";
 import { claimPost, getAccount, publishClaimedPost } from "@/lib/publish";
+import { INSTAGRAM_GRAPH, graph } from "@/lib/meta";
+import { technicalError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -54,5 +56,30 @@ export async function GET(request: NextRequest) {
     if (result.ok) summary.published++; else summary.failed++;
   }
 
-  return NextResponse.json(summary);
+  // Instagram Login tokens can be renewed without the student doing anything: renew those in their last 10 days.
+  let renewed = 0;
+  if (Date.now() - started < TIME_BUDGET_MS) {
+    const { data: expiring } = await supabase.from("instagram_accounts")
+      .select("user_id,access_token")
+      .like("fb_user_id", "ig:%")
+      .gt("token_expires_at", new Date().toISOString())
+      .lt("token_expires_at", new Date(Date.now() + 10 * 86400000).toISOString())
+      .limit(5);
+    for (const acct of expiring ?? []) {
+      try {
+        const fresh = await graph<{ access_token: string; expires_in?: number }>("/refresh_access_token", {
+          host: INSTAGRAM_GRAPH, unversioned: true, params: { grant_type: "ig_refresh_token", access_token: acct.access_token as string },
+        });
+        await supabase.from("instagram_accounts").update({
+          access_token: fresh.access_token,
+          token_expires_at: new Date(Date.now() + (fresh.expires_in && fresh.expires_in > 0 ? fresh.expires_in : 60 * 86400) * 1000).toISOString(),
+        }).eq("user_id", acct.user_id as string);
+        renewed++;
+      } catch (e) {
+        console.error(`[cron] token renewal failed for ${acct.user_id}: ${technicalError(e)}`);
+      }
+    }
+  }
+
+  return NextResponse.json({ ...summary, renewed });
 }

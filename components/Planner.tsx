@@ -13,9 +13,8 @@ export interface AccountInfo {
 
 type Editing = { post: Post | null; date?: string } | null;
 
-const RECONNECT_URL = "/api/auth/meta/login";
 
-export default function Planner({ account, aiEnabled }: { account: AccountInfo; aiEnabled: boolean }) {
+export default function Planner({ account, aiEnabled, loginUrl: RECONNECT_URL }: { account: AccountInfo; aiEnabled: boolean; loginUrl: string }) {
   const [posts, setPosts] = useState<Post[] | null>(null);
   const [month, setMonth] = useState("");            // set after mount so server and browser agree
   const [view, setView] = useState<"grid" | "cal">("grid");

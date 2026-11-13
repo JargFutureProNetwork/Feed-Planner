@@ -1,5 +1,9 @@
 import { db, type AccountRow, type PostRow, type PostStatus } from "./supabase";
-import { publishImage } from "./meta";
+import { FACEBOOK_GRAPH, INSTAGRAM_GRAPH, publishImage } from "./meta";
+
+/** Which Meta host serves this account: Instagram Login accounts live on graph.instagram.com. */
+export const isInstagramLogin = (account: Pick<AccountRow, "fb_user_id">) => account.fb_user_id.startsWith("ig:");
+export const graphHostFor = (account: Pick<AccountRow, "fb_user_id">) => (isInstagramLogin(account) ? INSTAGRAM_GRAPH : FACEBOOK_GRAPH);
 import { friendlyError, needsReconnect, technicalError } from "./errors";
 
 const POST_COLUMNS = "id,user_id,image_url,caption,scheduled_at,status";
@@ -20,7 +24,7 @@ export async function claimPost(id: string, from: PostStatus[], userId?: string)
 
 export async function getAccount(userId: string): Promise<AccountRow | null> {
   const { data, error } = await db().from("instagram_accounts")
-    .select("user_id,ig_user_id,ig_username,ig_profile_picture_url,access_token,token_expires_at")
+    .select("user_id,fb_user_id,ig_user_id,ig_username,ig_profile_picture_url,access_token,token_expires_at")
     .eq("user_id", userId).maybeSingle();
   if (error) throw new Error(`getAccount: ${error.message}`);
   return (data as AccountRow | null) ?? null;
@@ -34,7 +38,7 @@ export async function publishClaimedPost(post: PostRow, account?: AccountRow | n
   try {
     const acct = account ?? (await getAccount(post.user_id));
     if (!acct) throw new Error("No Instagram account is connected for this user.");
-    const mediaId = await publishImage(acct.ig_user_id, acct.access_token, post.image_url, post.caption);
+    const mediaId = await publishImage(acct.ig_user_id, acct.access_token, post.image_url, post.caption, graphHostFor(acct));
     await db().from("scheduled_posts")
       .update({ status: "published", ig_media_id: mediaId, published_at: new Date().toISOString(), error_message: null, student_message: null })
       .eq("id", post.id);
