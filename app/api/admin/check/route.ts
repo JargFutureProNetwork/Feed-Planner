@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       add(false, "Meta accepts the App ID and App secret", `${technicalError(e)}. Copy both again from Meta > App settings > Basic (click Show for the secret), with no spaces.`);
     }
-    add(null, "Sign-in mode", val("META_LOGIN_CONFIG_ID") ? "Using a Facebook Login for Business configuration (META_LOGIN_CONFIG_ID is set). The configuration must be of type 'User access token' and include all four permissions." : "Asking for permissions by name (no META_LOGIN_CONFIG_ID).");
+    add(null, "Sign-in mode", val("META_LOGIN_CONFIG_ID") ? "Using a login configuration (META_LOGIN_CONFIG_ID = " + val("META_LOGIN_CONFIG_ID") + "). On newer Meta apps this is the 'Instagram API (Unified Login)' configuration, which lets people log in with Instagram and needs no Facebook Page." : "Asking for permissions by name (no META_LOGIN_CONFIG_ID).");
   }
 
   // 4b. Instagram Login (no Facebook Page needed)
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     add(!!val("INSTAGRAM_APP_SECRET"), "INSTAGRAM_APP_SECRET is set", val("INSTAGRAM_APP_SECRET") ? "" : "Copy the Instagram app secret from the same screen (it is different from the Meta App secret).");
     add(val("INSTAGRAM_APP_SECRET") !== val("META_APP_SECRET") || !val("META_APP_SECRET"), "INSTAGRAM_APP_SECRET is not the Meta App secret", val("INSTAGRAM_APP_SECRET") === val("META_APP_SECRET") ? "Both secrets are identical. The Instagram one is shown under Instagram > API setup with Instagram login." : "");
     add(null, "Sign-in button", "Students see \"Continue with Instagram\". Redirect URI that must be listed in Meta (Instagram > API setup with Instagram login > Set up Instagram business login): " + appUrl + "/api/auth/instagram/callback");
-  } else add(null, "Sign-in button", "Students see \"Continue with Meta\" (Facebook Login). Set INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET to switch to direct Instagram sign-in.");
+  } else add(null, "Sign-in button", val("META_LOGIN_CONFIG_ID") ? "Students see \"Connect Instagram\" and log in through your Unified login configuration." : "Students see \"Continue with Meta\" (Facebook Login). Set META_LOGIN_CONFIG_ID to your Unified login Configuration ID to let people log in with Instagram, no Facebook Page needed.");
 
   // 5. Optional AI helper
   if (val("GEMINI_API_KEY")) {

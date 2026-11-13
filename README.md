@@ -112,34 +112,29 @@ git push -u origin main
 5. When Meta's sign-in asks which Pages and Instagram accounts to share, the student should tick
    their Page **and** their Instagram account, and leave every permission switched on.
 
-## Part 4B: Direct Instagram sign-in (recommended)
+## Part 4B: Let students log in with Instagram (no Facebook Page)
 
-With this switched on, students see **Continue with Instagram** and sign in with their Instagram
-login only. They need **no Facebook account, no Facebook Page and no developer registration**.
-Their Instagram must still be a **professional** account (Business or Creator): Meta does not allow
-any app to publish to personal accounts. Switching is free and takes a minute in the Instagram app
-(Settings > Account type and tools > Switch to professional account).
+Newer Meta apps use **Unified login**. Students click **Connect Instagram**, and on Meta's screen
+they can log in with their Instagram account. They need **no Facebook Page and no developer
+registration**. Their Instagram must still be a **professional** account (Business or Creator):
+Meta does not allow any app to publish to personal accounts. Switching is free and takes a minute
+in the Instagram app (Settings > Account type and tools > Switch to professional account).
 
 ### Set it up in Meta
 
-1. In your Meta app, open the **Instagram** product and choose **API setup with Instagram login**
-   (also called "Instagram API with Instagram Login"). If the Instagram product isn't there, add it
-   under **Add product** / **Use cases**.
-2. On that screen copy two values. They are different from the App ID and secret in Part 4:
-   - **Instagram app ID** → `INSTAGRAM_APP_ID`
-   - **Instagram app secret** (click Show) → `INSTAGRAM_APP_SECRET`
-3. Still on that screen, find **Set up Instagram business login** and open its **Business login
-   settings**. Under **OAuth redirect URIs** add exactly (with your own app address):
-   - `https://feed-preview-app.vercel.app/api/auth/instagram/callback`
-   - Save. `https`, no slash at the end.
-4. Make sure the permissions `instagram_business_basic` and `instagram_business_content_publish`
-   are added for the app (same screen, or **Use cases > Customize > Permissions**).
-5. In Vercel add `INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` (Part 5), then **Redeploy**.
-   The button on the sign-in screen changes to "Continue with Instagram" by itself.
-6. Open the checkup page (`/api/admin/check?key=YOUR_CRON_SECRET`) to confirm the values are read.
+1. In your Meta app open **Use cases > Customize > Instagram API > API setup with Unified login**.
+2. Under **1. Configure your app** you see a configuration called **Instagram API (Unified Login)**
+   with a **Configuration ID** (a long number). Copy it → `META_LOGIN_CONFIG_ID`.
+3. Under **Redirect URL**, the registered URL must be exactly (with your own app address):
+   - `https://feed-preview-app.vercel.app/api/auth/meta/callback`
+   - If it isn't in the list, paste it under **Register a new redirect URL** and click **Save**.
+4. In Vercel add `META_LOGIN_CONFIG_ID` with that number (Part 5), then **Redeploy**. The button on
+   the sign-in screen changes to "Connect Instagram" by itself.
+5. Open the checkup page (`/api/admin/check?key=YOUR_CRON_SECRET`) to confirm the value is read.
 
-Keep `META_APP_ID` and `META_APP_SECRET` in Vercel as they are. Removing `META_APP_SECRET` would
-sign everybody out.
+There is no separate "Instagram app ID" or "Instagram app secret" on newer apps. Leave
+`INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` empty; they only apply to older Meta apps that
+still show "API setup with Instagram login".
 
 ### Add each student as an Instagram Tester
 
@@ -158,8 +153,8 @@ While the app is in Development mode, only Instagram accounts with a role can si
 Your own Instagram account needs this too: add yourself as an Instagram Tester and accept, even
 though you are the app's admin.
 
-Already connected through Facebook? Just sign in again with Instagram. The planner and its posts
-stay with the same Instagram username.
+Already connected before? Just connect again. The planner and its posts stay with the same
+Instagram account.
 
 ## Part 5: Environment variables in Vercel
 
@@ -171,13 +166,11 @@ In Vercel open your project > **Settings > Environment Variables** and add these
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key from Part 1 |
 | `META_APP_ID` | App ID from Part 4 |
 | `META_APP_SECRET` | App secret from Part 4 |
-| `INSTAGRAM_APP_ID` | Instagram app ID from Part 4B (switches on "Continue with Instagram") |
-| `INSTAGRAM_APP_SECRET` | Instagram app secret from Part 4B |
 | `NEXT_PUBLIC_APP_URL` | Your app address, e.g. `https://feed-preview-app.vercel.app` (no slash at the end) |
 | `CRON_SECRET` | Any long random text. Make one up, 30+ characters, letters and numbers only |
 | `GEMINI_API_KEY` | Optional. Your Google Gemini key, for the "Write with AI" button |
 | `GEMINI_MODEL` | Optional. Defaults to `gemini-2.5-flash` |
-| `META_LOGIN_CONFIG_ID` | Optional. Only if Part 4 step 5 applied to you |
+| `META_LOGIN_CONFIG_ID` | The Unified login Configuration ID from Part 4B |
 
 Then go to **Deployments**, open the menu on the latest deployment, and click **Redeploy**.
 Environment variables only take effect after a redeploy.

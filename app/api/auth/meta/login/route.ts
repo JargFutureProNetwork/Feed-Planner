@@ -16,7 +16,8 @@ export async function GET() {
     url.searchParams.set("response_type", "code");
     // Facebook Login for Business can require a saved "configuration" instead of a scope list.
     const configId = (process.env.META_LOGIN_CONFIG_ID || "").trim();
-    if (configId) url.searchParams.set("config_id", configId);
+    // (This is also how "Unified login" works on newer Meta apps: permissions come from the configuration.)
+    if (configId) { url.searchParams.set("config_id", configId); url.searchParams.set("override_default_response_type", "true"); }
     else url.searchParams.set("scope", META_SCOPES.join(","));
   } catch (e) {
     console.error("[auth/login]", e);

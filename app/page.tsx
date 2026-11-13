@@ -21,8 +21,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   }
 
   const step = typeof params.step === "string" && /^[a-z]{1,12}$/.test(params.step) ? params.step : undefined;
-  const viaInstagram = !!(process.env.INSTAGRAM_APP_ID || "").trim();
-  const loginUrl = viaInstagram ? "/api/auth/instagram/login" : "/api/auth/meta/login";
+  const instagramLogin = !!(process.env.INSTAGRAM_APP_ID || "").trim();   // older Meta apps only
+  const viaInstagram = instagramLogin || !!(process.env.META_LOGIN_CONFIG_ID || "").trim();
+  const loginUrl = instagramLogin ? "/api/auth/instagram/login" : "/api/auth/meta/login";
   if (!account) return <Login error={error} step={step} loginUrl={loginUrl} viaInstagram={viaInstagram} />;
 
   const expires = account.token_expires_at ? new Date(account.token_expires_at).getTime() : null;
