@@ -216,4 +216,5 @@ Open http://localhost:3000.
 | `supabase/schema.sql` | Tables, Row Level Security, storage bucket |
 | `supabase/cron.sql` | The every-minute publishing job |
 #   F e e d - P l a n n e r  
+ #   F e e d - P l a n n e r  
  
