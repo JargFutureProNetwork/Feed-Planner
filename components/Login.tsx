@@ -7,14 +7,14 @@ const MESSAGES: Record<string, string> = {
   setup: "This app isn't fully set up yet. Please tell your teacher.",
 };
 
-export default function Login({ error }: { error?: string }) {
+export default function Login({ error, step }: { error?: string; step?: string }) {
   return (
     <main className="gate">
       <div className="gatecard">
         <span className="eyebrow">Feed Preview Studio</span>
         <h1>Plan your month, then let it post itself</h1>
         <p>Connect your Instagram once. After that you add a photo, write the caption, pick a time, and we publish it for you.</p>
-        {error && <div className="alert" role="alert">{MESSAGES[error] || MESSAGES.failed}</div>}
+        {error && <div className="alert" role="alert">{MESSAGES[error] || MESSAGES.failed}{step ? ` (Help code: ${step})` : ""}</div>}
         <a className="btn primary big" href="/api/auth/meta/login">Continue with Meta</a>
         <p style={{ fontSize: 12.5 }}>
           You sign in on Meta&apos;s own page with your usual Facebook or Instagram login. We never see your password.

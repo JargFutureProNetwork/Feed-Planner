@@ -20,7 +20,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     error = error || "setup";
   }
 
-  if (!account) return <Login error={error} />;
+  const step = typeof params.step === "string" && /^[a-z]{1,12}$/.test(params.step) ? params.step : undefined;
+  if (!account) return <Login error={error} step={step} />;
 
   const expires = account.token_expires_at ? new Date(account.token_expires_at).getTime() : null;
   return (

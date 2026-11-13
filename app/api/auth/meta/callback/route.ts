@@ -32,16 +32,19 @@ export async function GET(request: NextRequest) {
   const state = params.get("state");
   if (!code || !state || state !== request.cookies.get(STATE_COOKIE)?.value) return home("state");
 
+  let step = "settings";
   try {
     const client_id = env("META_APP_ID");
     const client_secret = env("META_APP_SECRET");
 
     // 1. Exchange the code for a short-lived token.
+    step = "code";
     const short = await graph<TokenResponse>("/oauth/access_token", {
       params: { client_id, client_secret, code, redirect_uri: `${appUrl()}/api/auth/meta/callback` },
     });
 
     // 2. Upgrade it straight away to a long-lived token (about 60 days).
+    step = "token";
     const long = await graph<TokenResponse>("/oauth/access_token", {
       params: { grant_type: "fb_exchange_token", client_id, client_secret, fb_exchange_token: short.access_token },
     });
@@ -49,7 +52,9 @@ export async function GET(request: NextRequest) {
     const expiresIn = long.expires_in && long.expires_in > 0 ? long.expires_in : 60 * 24 * 60 * 60;
 
     // 3. Who is this, and which Instagram professional account is linked to their Page?
+    step = "profile";
     const me = await graph<{ id: string }>("/me", { token, params: { fields: "id" } });
+    step = "pages";
     const pages = await graph<PagesResponse>("/me/accounts", {
       token, params: { fields: "id,name,instagram_business_account{id,username,profile_picture_url}", limit: "100" },
     });
@@ -58,6 +63,7 @@ export async function GET(request: NextRequest) {
     if (!ig) return home("no_instagram");
 
     // 4. Save (or refresh) the account. user_id is created on first connect and kept afterwards.
+    step = "save";
     const { data, error } = await db().from("instagram_accounts")
       .upsert({
         fb_user_id: me.id,
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
     res.cookies.set(SESSION_COOKIE, signToken({ uid: data.user_id as string }), cookieOptions());
     return res;
   } catch (e) {
-    console.error(`[auth/callback] ${technicalError(e)}`);
-    return home("failed");
+    console.error(`[auth/callback] step=${step} ${technicalError(e)}`);
+    return home(`failed&step=${step}`);
   }
 }

@@ -161,6 +161,15 @@ Then send the app address to your students. That link is all they need.
 
 Students only ever see a friendly sentence. The technical reason is kept for you:
 
+- **Start here: the checkup page.** Open `https://YOUR-APP.vercel.app/api/admin/check?key=YOUR_CRON_SECRET`
+  in your browser. It tests every setting (Supabase key and tables, storage bucket, Meta app ID and
+  secret, app address, Gemini key) and says in plain words what to fix. It never shows a secret.
+- **Sign-in help codes.** When connecting fails, the message ends with a help code:
+  `settings` = a Vercel variable is missing; `code` = Meta rejected the sign-in (wrong App secret, or the
+  redirect URI / `NEXT_PUBLIC_APP_URL` doesn't match); `token` = the 60-day upgrade failed (App secret);
+  `profile` or `pages` = Meta refused to share the account or Pages (permissions missing, or the
+  person isn't a Tester); `save` = Supabase refused to save (wrong key, or schema.sql not run).
+
 - **A post failed**: Supabase > **Table Editor > scheduled_posts** > the `error_message` column
   holds Meta's exact error, code and trace id.
 - **Sign-in or AI problems**: Vercel > your project > **Logs**. Look for lines starting with
@@ -215,7 +224,3 @@ Open http://localhost:3000.
 | `lib/` | Meta API calls, friendly error messages, sessions, database client |
 | `supabase/schema.sql` | Tables, Row Level Security, storage bucket |
 | `supabase/cron.sql` | The every-minute publishing job |
-#   F e e d - P l a n n e r  
- #   F e e d - P l a n n e r  
- #   F e e d - P l a n n e r  
- 
